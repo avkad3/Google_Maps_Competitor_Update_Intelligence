@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import post_card %}
+{% block body %}
+<div class="head"><div><h1>Repository</h1><p class="muted">{{ total }} post{{ '' if total == 1 else 's' }} match{{ 'es' if total == 1 }}{% if pages > 1 %} · page {{ page }} of {{ pages }}{% endif %}. Includes our own profile's updates for comparison.</p></div></div>
+<form class="card filters" method="get">
+  <label>Search <input type="search" name="q" value="{{ args.q or '' }}" placeholder="Text or business"></label>
+  <label>Competitor <select name="competitor"><option value="">All</option>
+    {% for c in comps %}<option value="{{ c.id }}" {{ 'selected' if args.competitor == c.id|string }}>{{ c.name }}</option>{% endfor %}
+    {% if p.own %}<option value="{{ p.own.id }}" {{ 'selected' if args.competitor == p.own.id|string }}>★ {{ p.own.name }} (ours)</option>{% endif %}</select></label>
+  <label>Topic <select name="topic"><option value="">All</option>{% for t in topics %}<option {{ 'selected' if args.topic == t }}>{{ t }}</option>{% endfor %}</select></label>
+  <label>Keyword <input name="keyword" list="kwlist" value="{{ args.keyword or '' }}"><datalist id="kwlist">{% for k in keywords %}<option value="{{ k }}">{% endfor %}</datalist></label>
+  <label>From <input type="date" name="from" value="{{ args.get('from', '') }}"></label>
+  <label>To <input type="date" name="to" value="{{ args.to or '' }}"></label>
+  <div class="row"><button class="primary">Apply filters</button><a class="btn" href="{{ url_for('posts', pid=p.id) }}">Reset</a></div>
+</form>
+<div class="posts">{% for it in items %}{{ post_card(it) }}{% else %}<div class="card empty">No posts match these filters.</div>{% endfor %}</div>
+{% if pages > 1 %}
+<nav class="row" style="justify-content:center;margin-top:20px" aria-label="Pagination">
+  {% set a = args.to_dict() %}
+  {% if page > 1 %}{% set _ = a.update({'page': page - 1}) %}<a class="btn" rel="prev" href="{{ url_for('posts', pid=p.id, **a) }}">Previous</a>{% else %}<span class="btn" aria-disabled="true">Previous</span>{% endif %}
+  <span class="muted">Page {{ page }} of {{ pages }}</span>
+  {% if page < pages %}{% set _ = a.update({'page': page + 1}) %}<a class="btn" rel="next" href="{{ url_for('posts', pid=p.id, **a) }}">Next</a>{% else %}<span class="btn" aria-disabled="true">Next</span>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

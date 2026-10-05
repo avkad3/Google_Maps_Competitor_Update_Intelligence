@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="head"><div><h1>AI providers</h1>
+  <p class="muted">Keys are read from server environment variables only. They are never shown here, sent to the browser or stored in the database.</p></div></div>
+{% if result %}<div class="flash {{ 'ok' if result.ok else 'error' }}" role="status"><div><b>{{ result.provider }}:</b> {{ result.message }}
+  {% if result.models %}<details><summary>Models discovered</summary><small>{{ result.models|join(', ') }}</small></details>{% endif %}</div></div>{% endif %}
+<section class="card"><div class="table-wrap"><table>
+  <thead><tr><th>Order</th><th>Provider</th><th>Status</th><th>Model</th><th class="hide-sm">Last used</th><th class="hide-sm">Last error</th><th><span class="hide-sm">Test</span></th></tr></thead>
+  <tbody>
+  {% for pr in providers %}
+  <tr><td>{{ loop.index }}</td><td><b>{{ pr.label }}</b>{% if pr.env_key %}<br><small class="muted"><code>{{ pr.env_key }}</code></small>{% endif %}</td>
+    <td>{% if pr.configured %}<span class="badge ok">configured</span>{% else %}<span class="badge">no key</span>{% endif %}</td>
+    <td><small>{{ pr.model or '-' }}</small></td><td class="hide-sm"><small>{{ pr.last_used or '-' }}</small></td><td class="hide-sm notes"><small title="{{ pr.last_error or '' }}">{{ pr.last_error[:120] if pr.last_error else '' }}</small></td>
+    <td><form method="post"><input type="hidden" name="provider" value="{{ pr.name }}"><button class="sm" data-busy="Testing…" aria-label="Test {{ pr.label }}" {{ '' if pr.configured else 'disabled title="Set the API key first"' }}>Test</button></form></td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+<p class="muted" style="margin-top:12px">Requests try providers in this order (set <code>AI_PROVIDER_ORDER</code>) and fail over to the next one on any error. Model names are discovered automatically from each provider's model list; override with <code>GEMINI_MODEL</code>, <code>GROQ_MODEL</code>, <code>XAI_MODEL</code> or <code>OPENROUTER_MODEL</code>. The built-in offline analyser is always last, so analysis and generation keep working when every provider is down.</p>
+</section>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="head"><div><h1>Discover competitors from keywords</h1>
+  <p class="muted">Searches Google Maps for the project keywords and compares results with the competitor repository before anything is added.</p></div></div>
+<section class="card">
+  <form method="post" class="stack">
+    <div class="chips">{% for k in keywords %}<label class="inline chip"><input type="checkbox" name="keywords" value="{{ k }}" checked> {{ k }}</label>{% else %}<span class="muted">No keywords yet. Add some in <a href="{{ url_for('project_settings', pid=p.id) }}">project settings</a>.</span>{% endfor %}</div>
+    <div class="row">
+      <label class="inline"><input type="radio" name="mode" value="live" {{ 'checked' if live_ok[0] else 'disabled' }}> Live Google Maps</label>
+      <label class="inline"><input type="radio" name="mode" value="demo" {{ '' if live_ok[0] else 'checked' }}> Demo source</label>
+      <button class="primary" data-busy="Searching…" {{ 'disabled' if not keywords }}>Search</button>
+      <a class="btn" href="{{ url_for('discover', pid=p.id) }}">Refresh results</a>
+      <span class="hint">Searches run in the background; refresh to see new results.</span>
+    </div>
+  </form>
+</section>
+<section class="card">
+  <div class="table-wrap"><table>
+    <tr><th>Keyword</th><th>Business</th><th class="hide-sm">Category</th><th class="num">Rating</th><th>Status</th><th></th></tr>
+    {% for d in found %}
+    <tr><td>{{ d.keyword }}</td>
+      <td>{% if d.status == 'error' %}<span class="badge bad">{{ d.name }}</span>{% else %}<b>{{ d.name }}</b><br><small class="muted">{{ d.address or '' }}</small>{% endif %}</td>
+      <td class="hide-sm">{{ d.category or '' }}</td><td class="num">{{ d.rating or '' }}</td>
+      <td>{% if d.status == 'existing' %}<span class="badge ok">already a competitor</span>{% elif d.status == 'added' %}<span class="badge ok">added</span>{% elif d.status == 'ignored' %}<span class="badge">ignored</span>{% elif d.status == 'new' %}<span class="badge info">new{% if d.existing_business_id %} (in repository){% endif %}</span>{% endif %}</td>
+      <td>{% if d.status == 'new' %}<div class="row" style="gap:6px;flex-wrap:nowrap"><form method="post" action="{{ url_for('discover_action', pid=p.id, did=d.id, action='add') }}"><button class="sm primary" title="Add to competitors and the scraping queue">Add</button></form>
+          <form method="post" action="{{ url_for('discover_action', pid=p.id, did=d.id, action='ignore') }}"><button class="sm">Ignore</button></form></div>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="6" class="empty">No results yet. Run a search.</td></tr>{% endfor %}
+  </table></div>
+  <small class="muted">Businesses are matched by Google Maps place identity first, then by name similarity, so an existing competitor is never created twice.</small>
+</section>
+{% endblock %}

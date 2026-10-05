@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>{% block title %}{{ p.name ~ ' · ' if p else '' }}Maps Competitor Intelligence{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Fira+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><path d=%22M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7z%22 fill=%22%232563eb%22/><circle cx=%2212%22 cy=%229%22 r=%222.6%22 fill=%22white%22/></svg>">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+{% set ep = request.endpoint %}
+<header class="top">
+  <div class="topbar">
+    <a class="logo" href="{{ url_for('home') }}" aria-label="Maps Competitor Intelligence home"><span class="pin" aria-hidden="true"></span><span class="logo-text">Maps Competitor Intelligence</span></a>
+    <span class="spacer"></span>
+    {% if all_projects %}
+    <select aria-label="Switch project" onchange="if(this.value) location.href=this.value">
+      <option value="">{{ 'Switch project…' if p else 'Open a project…' }}</option>
+      {% for x in all_projects %}<option value="{{ url_for('dashboard', pid=x.id) }}" {{ 'selected' if p and p.id == x.id }}>{{ x.name }}</option>{% endfor %}
+    </select>
+    {% endif %}
+    <nav class="toplinks" aria-label="Global">
+      <a href="{{ url_for('home') }}" class="{{ 'on' if ep == 'home' }}">Projects</a>
+      <a href="{{ url_for('all_posts') }}" class="{{ 'on' if ep == 'all_posts' }}">All posts</a>
+      <a href="{{ url_for('ai_settings') }}" class="{{ 'on' if ep == 'ai_settings' }}">AI providers</a>
+      <a href="{{ url_for('about') }}" class="{{ 'on' if ep == 'about' }}">How it works</a>
+    </nav>
+  </div>
+  {% if p %}
+  <div class="tabs-wrap">
+  <nav class="tabs" aria-label="Project">
+    {% for endpoint, label, match in [
+      ('dashboard', 'Dashboard', ('dashboard',)),
+      ('competitors', 'Competitors & scraping', ('competitors',)),
+      ('runs', 'Scrape logs', ('runs', 'run_detail')),
+      ('posts', 'Repository', ('posts', 'post_detail')),
+      ('analysis_page', 'AI analysis', ('analysis_page',)),
+      ('trends_page', 'Trends', ('trends_page',)),
+      ('ideas', 'Content generator', ('ideas', 'idea_detail')),
+      ('discover', 'Discover', ('discover',)),
+      ('project_settings', 'Settings', ('project_settings',))] %}
+    <a href="{{ url_for(endpoint, pid=p.id) }}" {% if ep in match %}class="on" aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </nav>
+  </div>
+  {% endif %}
+</header>
+<main id="main">
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% for cat, m in msgs %}<div class="flash {{ cat }}" role="{{ 'alert' if cat == 'error' else 'status' }}"><div>{{ m }}</div><button type="button" class="x" aria-label="Dismiss" onclick="this.parentElement.remove()">&times;</button></div>{% endfor %}
+  {% endwith %}
+  {% block body %}{% endblock %}
+</main>
+<script>
+// Keep the active project tab visible on narrow screens.
+document.querySelector('.tabs a.on')?.scrollIntoView({block: 'nearest', inline: 'center', behavior: 'instant'});
+// Loading feedback for every POST form: disable the clicked button after the browser has captured its value.
+document.addEventListener('submit', e => {
+  const f = e.target;
+  if (e.defaultPrevented || (f.method || '').toLowerCase() !== 'post') return;
+  const b = e.submitter || f.querySelector('button:not([type=button])');
+  if (!b) return;
+  setTimeout(() => { b.disabled = true; b.setAttribute('aria-busy', 'true'); if (b.dataset.busy) b.textContent = b.dataset.busy; }, 0);
+});
+// Restore buttons when the page comes back from the bfcache (browser Back).
+window.addEventListener('pageshow', e => { if (e.persisted) document.querySelectorAll('button[aria-busy]').forEach(b => { b.disabled = false; b.removeAttribute('aria-busy'); }); });
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

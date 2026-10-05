@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.env
+data/*.db
+data/*.db-*
+data/media/
+data/chrome-profile*/
+data/screenshots/
+.pytest_cache/
+.env.*
+!.env.example
+*.log
+*.pdf

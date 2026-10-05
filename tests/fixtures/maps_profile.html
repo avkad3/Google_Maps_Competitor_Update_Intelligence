@@ -1,0 +1,30 @@
+<!doctype html>
+<!-- Simplified stand-in for a Google Maps place panel, used to test the extractor offline. -->
+<html><head><meta charset="utf-8"><title>Test Salon - Google Maps</title></head>
+<body>
+<div role="main" aria-label="Test Salon">
+  <h1>Test Salon Kharghar</h1>
+  <button jsaction="pane.rating.category">Hair salon</button>
+  <div role="img" aria-label="4.6"><span aria-hidden="true">4.6</span></div>
+  <button aria-label="1,234 reviews">(1,234)</button>
+  <button data-item-id="address" aria-label="Address: Sector 20, Kharghar, Navi Mumbai">Sector 20</button>
+  <div role="tablist">
+    <button role="tab" aria-label="Overview">Overview</button>
+    <button role="tab" aria-label="Updates" onclick="document.getElementById('updates').hidden=false">Updates</button>
+    <button role="tab" aria-label="Reviews">Reviews</button>
+  </div>
+  <div id="updates" hidden style="height:400px;overflow:auto">
+    <div class="card"><div><div><span>2 weeks ago</span></div>
+      <div>Diwali glow packages ✨ Hair spa + facial at flat 30% off. Valid till 15 Nov.</div>
+      <img src="https://lh5.googleusercontent.com/p/AF1QipTEST1=w400-h300-k-no" alt="">
+      <a href="https://www.google.com/maps/posts/AbCdEf123456">Learn more</a></div></div>
+    <div class="card"><div><div><span>a month ago</span></div>
+      <div>Monsoon frizz control tips from our stylists. Use a sulphate-free shampoo and never tie wet hair.</div>
+      <div style="background-image: url('https://lh5.googleusercontent.com/p/AF1QipTEST2=w400-h300')"></div>
+      <button aria-label="Book">Book</button></div></div>
+    <div class="card"><div><div><span>3 months ago</span></div>
+      <div>Introducing hair botox! Launch price ₹3,499 at our Kharghar salon.</div></div></div>
+  </div>
+  <div data-review-id="r1"><span>5 days ago</span><div>Great haircut, friendly staff, would come again for sure!</div></div>
+</div>
+</body></html>

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block body %}
+<div class="head"><div><h1>{{ post.business_name }}</h1><p class="muted">Published {{ post.published_raw or '' }} {% if post.published_at %}({{ post.published_at }}){% endif %}</p></div>
+  <a class="btn" href="{{ request.referrer if request.referrer and request.host in request.referrer else url_for('all_posts') }}">{{ icon('arrow-left') }} Back</a></div>
+<div class="grid g2">
+  <section class="card">
+    {% for m in post.media %}<img src="{{ m.url }}" alt="Image {{ loop.index }} published by {{ post.business_name }}" loading="lazy" style="width:100%;border-radius:8px;margin-bottom:8px">{% endfor %}
+    <p style="white-space:pre-line;overflow-wrap:anywhere">{{ post.text }}</p>
+    {% if post.cta_label %}<p><span class="badge info">CTA button: {{ post.cta_label }}</span> {% if post.cta_url and post.cta_url.startswith('http') %}<a href="{{ post.cta_url }}" target="_blank" rel="noopener">{{ post.cta_url[:60] }}</a>{% endif %}</p>{% endif %}
+  </section>
+  <section>
+    <div class="card">
+      <h2>AI analysis</h2>
+      {% if post.main_topic %}
+      <table class="kv">
+        <tr><th>Main topic</th><td>{{ post.main_topic }}</td></tr>
+        <tr><th>Sub-topic</th><td>{{ post.sub_topic or '-' }}</td></tr>
+        <tr><th>Content type</th><td>{{ post.content_type }}</td></tr>
+        <tr><th>Call to action</th><td>{{ post.cta_detected }}</td></tr>
+        <tr><th>Offer</th><td>{{ post.offer or '-' }}</td></tr>
+        <tr><th>Keywords</th><td><div class="chips">{% for k in post.keywords_list %}<span class="chip">{{ k }}</span>{% endfor %}</div></td></tr>
+        <tr><th>Analysed by</th><td>{{ post.analysis_provider }} · {{ post.analyzed_at|dt }}</td></tr>
+      </table>
+      {% else %}<p class="muted">Not analysed yet.</p>{% endif %}
+    </div>
+    <div class="card">
+      <h2>Source &amp; repository record</h2>
+      <table class="kv">
+        <tr><th>Business profile</th><td>{% if post.maps_url %}<a href="{{ post.maps_url }}" target="_blank" rel="noopener" class="row" style="display:inline-flex;gap:4px">Open on Google Maps {{ icon('external') }}</a>{% else %}-{% endif %}</td></tr>
+        <tr><th>Post URL</th><td>{% if post.post_url %}<a href="{{ post.post_url }}" target="_blank" rel="noopener" style="overflow-wrap:anywhere">{{ post.post_url[:60] }}{{ '…' if post.post_url|length > 60 }}</a>{% else %}<span class="muted">not exposed by Google Maps</span>{% endif %}</td></tr>
+        <tr><th>Source</th><td><small style="overflow-wrap:anywhere">{{ post.source_ref }}</small></td></tr>
+        <tr><th>Projects</th><td>{{ post.projects|join(', ') }}</td></tr>
+        <tr><th>First scraped</th><td>{{ post.scraped_at|dt }}{% if post.first_run %} (<a href="{{ url_for('run_detail', rid=post.first_run.id) }}">run #{{ post.first_run.id }}</a>){% endif %}</td></tr>
+        <tr><th>Last seen</th><td>{{ post.last_seen_at|dt }} · seen {{ post.times_seen }}×</td></tr>
+        <tr><th>Fingerprint</th><td><code>{{ post.fingerprint[:16] }}…</code><br><small class="muted">based on {{ post.fingerprint_basis }}</small></td></tr>
+        <tr><th>Images</th><td>{% for m in post.media %}<a href="{{ m.url }}" target="_blank" rel="noopener">image {{ loop.index }}</a> {% else %}none{% endfor %}</td></tr>
+      </table>
+    </div>
+    {% if similar_ideas %}<div class="card"><h2>Generated content closest to this post</h2>
+      {% for i in similar_ideas %}<p><a href="{{ url_for('idea_detail', idea_id=i.id) }}">{{ i.title }}</a> <span class="badge">{{ (i.similarity * 100)|round|int }}% similar</span></p>{% endfor %}</div>{% endif %}
+  </section>
+</div>
+{% endblock %}

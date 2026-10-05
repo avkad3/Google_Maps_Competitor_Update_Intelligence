@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="head"><div><h1>How it works</h1><p class="muted">From competitor list to ready-to-post Google Maps updates.</p></div></div>
+<div class="grid g2">
+<section class="card">
+  <h2>Workflow</h2>
+  <ol>
+    <li>Create a project with your own Google Maps profile and optional search keywords.</li>
+    <li>Add competitors manually (or discover them from keywords).</li>
+    <li>Start a scraping job. Competitors are processed one by one in a real Chrome browser driven by Selenium; each profile's <b>Updates</b> are scrolled, expanded and extracted with their images and call-to-action buttons.</li>
+    <li>Each post gets a fingerprint (Google post id, else post URL, else business + normalised text). Posts already in the repository are skipped and counted as duplicates.</li>
+    <li>New posts are analysed: topic, sub-topic, keywords, content type, CTA and offer.</li>
+    <li>Trends show which topics competitors use, how many of them, and how often.</li>
+    <li>The generator writes ideas or complete updates from those trends and never repeats earlier ideas.</li>
+  </ol>
+</section>
+<section class="card">
+  <h2>When Google asks for verification</h2>
+  <p>If a CAPTCHA, "unusual traffic" or sign-in check appears, the job pauses (it never fails silently), the run and competitor are marked <span class="badge warn">needs verification</span>, and the run page shows a screenshot with <b>Continue</b>, <b>Skip</b> and <b>Cancel</b>. You can solve the challenge in the scraper's browser window, or click on the screenshot to solve it remotely. The intervention is recorded in the scrape log.</p>
+  <p>To reduce interruptions the scraper uses a persistent Chrome profile (cookies from a completed verification are reused), realistic pacing with random pauses, a single browser per run and English locale settings. It does not bypass Google's controls.</p>
+  <h2>Demo data</h2>
+  <p>The pre-loaded projects use a <b>synthetic demo dataset of fictional businesses</b> so the system can be evaluated even when Google blocks live scraping. Choose “Demo source” when scraping to replay the workflow: the second scrape finds new posts, later scrapes only duplicates. Choose “Live Google Maps” to scrape real profiles.</p>
+</section>
+</div>
+{% endblock %}

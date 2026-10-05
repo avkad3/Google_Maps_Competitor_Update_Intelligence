@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="head"><h1>Project settings</h1></div>
+<div class="grid g2">
+<section class="card">
+  <form class="stack" method="post">
+    <label>Project name <input name="name" value="{{ p.name }}" required></label>
+    <label>Industry <input name="industry" value="{{ p.industry or '' }}"></label>
+    <label>Location <input name="location" value="{{ p.location or '' }}"></label>
+    <fieldset style="display:grid;gap:12px"><legend>Our profile</legend>
+    <label>Business name <input name="own_name" value="{{ p.own.name if p.own else '' }}"></label>
+    <label>Google Maps URL <input name="own_url" type="url" value="{{ p.own.maps_url if p.own else '' }}"></label>
+    <label>Address <input name="own_address" value="{{ p.own.address if p.own else '' }}"></label></fieldset>
+    <label>Keywords (comma separated) <textarea name="keywords">{{ keywords|join(', ') }}</textarea></label>
+    <label>Automatic re-scrape
+      <select name="schedule_hours">
+        {% for h, l in [(0,'Off'),(6,'Every 6 hours'),(24,'Daily'),(72,'Every 3 days'),(168,'Weekly')] %}
+        <option value="{{ h }}" {{ 'selected' if (p.schedule_hours or 0) == h }}>{{ l }}</option>{% endfor %}
+      </select></label>
+    {% if p.last_scheduled_at %}<small class="muted">Last scheduled run: {{ p.last_scheduled_at|dt }}</small>{% endif %}
+    <button class="primary">Save changes</button>
+  </form>
+</section>
+<section class="card">
+  <h2 style="color:var(--bad)">Danger zone</h2>
+  <p class="muted">Deleting the project removes its links, logs and generated ideas. Competitor posts stay in the repository if another project uses the same competitor.</p>
+  <form method="post" action="{{ url_for('delete_project', pid=p.id) }}" onsubmit="return confirm(this.dataset.msg)" data-msg="Delete project {{ p.name }}? This cannot be undone."><button class="danger">Delete project</button></form>
+</section>
+</div>
+{% endblock %}

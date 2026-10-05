@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="head"><div><h1>Content generator</h1>
+  <p class="muted">Ideas and complete Google Maps updates built from this project's competitor repository. Earlier ideas are never repeated.</p></div></div>
+<div class="grid g2">
+<section class="card">
+  <h2>Generate</h2>
+  <form class="stack" method="post">
+    <fieldset>
+      <legend>What to create</legend>
+      <div class="row">
+        <label class="inline"><input type="radio" name="kind" value="idea" checked> Content ideas</label>
+        <label class="inline"><input type="radio" name="kind" value="update"> Complete Google Maps updates</label>
+      </div>
+    </fieldset>
+    <label>How many?
+      <input type="number" name="count" id="count" min="1" max="100" value="5" required inputmode="numeric" aria-describedby="count-hint">
+      <span class="hint" id="count-hint">Ideas: up to 100 per request. Complete updates: up to 20.</span></label>
+    <label><span>Topic <span class="hint">(optional)</span></span>
+      <select name="topic"><option value="">Mix of trending and missing topics</option>
+        {% for t in topics %}<option {{ 'selected' if request.args.topic == t }}>{{ t }}</option>{% endfor %}</select></label>
+    <label>AI provider
+      <select name="provider"><option value="">Automatic (with failover)</option>
+        {% for pr in providers %}<option value="{{ pr.name }}" {{ '' if pr.configured else 'disabled' }}>{{ pr.label }}{{ '' if pr.configured else ' (no key)' }}</option>{% endfor %}</select></label>
+    <label class="inline" id="img-opt"><input type="checkbox" name="make_images" value="1" checked> Create an image for each complete update (AI image with Gemini, otherwise a design card)</label>
+    <button class="primary" data-busy="Generating…">Generate</button>
+  </form>
+</section>
+<section class="card">
+  <h2>Generation history</h2>
+  <div class="table-wrap" style="max-height:420px;overflow-y:auto"><table>
+    <thead><tr><th>When</th><th>Type</th><th class="num">Items</th><th>Provider</th></tr></thead>
+    <tbody>
+    {% for b in batches %}<tr {% if b.batch_id == batch %}class="hl"{% endif %}><td class="nowrap"><a href="{{ url_for('ideas', pid=p.id, batch=b.batch_id) }}#b-{{ b.batch_id }}">{{ b.created_at|dt }}</a></td><td>{{ b.kind }}</td><td class="num">{{ b.n }}</td><td><small>{{ b.provider }}</small></td></tr>
+    {% else %}<tr><td colspan="4" class="empty">Nothing generated yet.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</section>
+</div>
+<div class="section-head" style="margin-top:8px">
+  <h2>Generated content <span class="muted" style="font-weight:400">({{ items|length }})</span></h2>
+  <nav class="seg" aria-label="Filter by type">
+    {% for k, label in [('', 'All'), ('idea', 'Ideas'), ('update', 'Complete updates')] %}
+    <a class="btn sm {{ 'on' if (kind or '') == k }}" {% if (kind or '') == k %}aria-current="true"{% endif %} href="{{ url_for('ideas', pid=p.id, kind=k or None, batch=batch or None) }}">{{ label }}</a>
+    {% endfor %}
+  </nav>
+</div>
+{% set ns = namespace(cur='') %}
+<div class="grid g3">
+{% for i in items %}
+  <article class="idea{{ ' current' if batch and i.batch_id == batch }}" {% if ns.cur != i.batch_id %}id="b-{{ i.batch_id }}"{% endif %}>
+    {% set ns.cur = i.batch_id %}
+    {% if i.image_path %}<img src="{{ media_url(i.image_path) }}" alt="Image for “{{ i.title }}”" loading="lazy">{% endif %}
+    <div class="row between"><span class="badge info">{{ i.topic }}</span><span class="badge {{ 'ok' if i.kind == 'update' }}">{{ 'complete update' if i.kind == 'update' else 'idea' }}</span></div>
+    <h3><a href="{{ url_for('idea_detail', idea_id=i.id) }}">{{ i.title }}</a></h3>
+    {% if i.kind == 'update' %}<div class="copy"><div class="clamp">{{ i.body }}</div></div>{% else %}<p class="muted" style="margin:0">{{ i.body }}</p>{% endif %}
+    {% if i.keywords_list %}<div class="chips">{% for k in i.keywords_list %}<span class="chip">{{ k }}</span>{% endfor %}</div>{% endif %}
+    <small class="muted meta">CTA: {{ i.cta }} · {{ i.provider }} · {{ i.created_at|dt }}{% if i.similarity is not none %} · {{ (i.similarity * 100)|round|int }}% similar to closest competitor post{% endif %}</small>
+  </article>
+{% else %}<div class="card empty">Nothing here yet. Use the form above to generate ideas.</div>{% endfor %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+// Keep the "how many" limit and image option in step with the chosen type.
+const count = document.getElementById('count'), imgOpt = document.getElementById('img-opt');
+function syncKind() {
+  const upd = document.querySelector('input[name=kind]:checked').value === 'update';
+  count.max = upd ? 20 : 100;
+  if (+count.value > +count.max) count.value = count.max;
+  imgOpt.hidden = !upd;
+}
+document.querySelectorAll('input[name=kind]').forEach(r => r.addEventListener('change', syncKind));
+syncKind();
+</script>
+{% endblock %}

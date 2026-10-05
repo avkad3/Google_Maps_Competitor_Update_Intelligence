@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge %}
+{% block body %}
+<div class="head">
+  <div>
+    <h1>Competitor projects</h1>
+    <p class="muted">Track what competitors publish as Google Maps Updates, spot trends, and generate your own updates from the research.</p>
+  </div>
+</div>
+<div class="grid g2">
+  <section>
+    {% for x in projects %}
+    <a class="card" href="{{ url_for('dashboard', pid=x.id) }}">
+      <h2 style="margin-bottom:4px">{{ x.name }}</h2>
+      <div class="muted">Our profile: {{ x.own_name or 'not set' }}{% if x.location %} · {{ x.location }}{% endif %}</div>
+      <div class="row" style="margin-top:10px;gap:6px"><span class="badge">{{ x.competitor_count }} competitors</span><span class="badge info">{{ x.post_count }} posts collected</span>{% if x.industry %}<span class="chip">{{ x.industry }}</span>{% endif %}</div>
+    </a>
+    {% else %}
+    <div class="card empty">No projects yet. Create the first one.</div>
+    {% endfor %}
+    {% if recent %}
+    <div class="card">
+      <h2>Recent scraping activity</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Project</th><th>When</th><th>Status</th><th class="num">New</th><th class="num">Dupes</th></tr>
+        {% for r in recent %}<tr><td><a href="{{ url_for('run_detail', rid=r.id) }}">{{ r.project_name }}</a> <span class="muted">({{ r.mode }})</span></td><td class="nowrap">{{ r.started_at|dt }}</td><td>{{ status_badge(r.status) }}</td><td class="num">{{ r.new_posts }}</td><td class="num">{{ r.duplicates }}</td></tr>{% endfor %}
+      </table></div>
+    </div>
+    {% endif %}
+  </section>
+  <section class="card">
+    <h2>Create a project</h2>
+    <form class="stack" method="post" action="{{ url_for('create_project') }}">
+      <label>Project name <input name="name" required placeholder="ABC Salon"></label>
+      <label>Industry <input name="industry" placeholder="Hair & beauty salon"></label>
+      <label>Location <input name="location" placeholder="Kharghar, Navi Mumbai"></label>
+      <fieldset>
+        <legend>Your business (the profile being researched)</legend>
+        <div class="grid" style="gap:10px">
+          <label>Business name <input name="own_name" placeholder="ABC Salon, Kharghar"></label>
+          <label>Google Maps URL <input name="own_url" type="url" placeholder="https://maps.google.com/..."></label>
+          <label>Address <input name="own_address" placeholder="Sector 12, Kharghar"></label>
+        </div>
+      </fieldset>
+      <label><span>Search keywords <span class="hint">(optional, comma separated)</span></span><textarea name="keywords" placeholder="salon in Kharghar, salon in Bandra"></textarea></label>
+      <button class="primary" data-busy="Creating…">Create project</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

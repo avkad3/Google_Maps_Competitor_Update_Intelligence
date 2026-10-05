@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="head"><div><h1>Trend analysis</h1><p class="muted">How often each topic appears across {{ table.total_competitors }} competitors and {{ table.total_posts }} analysed posts.</p></div>
+  <form class="inline-form" method="get"><label>From <input type="date" name="from" value="{{ args.get('from','') }}"></label><label>To <input type="date" name="to" value="{{ args.to or '' }}"></label><button>Apply</button>{% if args.get('from') or args.to %}<a class="btn" href="{{ url_for('trends_page', pid=p.id) }}">Clear</a>{% endif %}</form></div>
+<section class="card">
+  <div class="table-wrap"><table>
+    <tr><th>Topic</th><th>Competitors using topic</th><th class="num">Occurrence</th><th class="num">Posts</th><th class="num hide-sm">Share of posts</th><th class="hide-sm">Often paired with</th><th class="hide-sm">Latest</th></tr>
+    {% for r in table.rows %}
+    <tr><td><a href="{{ url_for('posts', pid=p.id, topic=r.topic) }}">{{ r.topic }}</a></td>
+      <td style="min-width:140px">{{ r.competitors_using }} of {{ r.competitors_total }}<div class="meter" style="margin-top:6px;max-width:200px"><i style="width: {{ r.competitor_pct }}%"></i></div></td>
+      <td class="num"><b>{{ r.competitor_pct }}%</b></td><td class="num">{{ r.posts }}</td><td class="num hide-sm">{{ r.post_pct }}%</td><td class="hide-sm">{{ r.top_sub }}</td><td class="hide-sm nowrap">{{ r.latest }}</td></tr>
+    {% else %}<tr><td colspan="7" class="empty">No analysed posts yet. Run AI analysis first.</td></tr>{% endfor %}
+  </table></div>
+  <small class="muted">Occurrence = share of competitors that published at least one update on the topic (the assignment's "25 of 50 = 50%" measure).</small>
+</section>
+{% if history.series %}
+<section class="card">
+  <h2>Topic history (posts per month)</h2>
+  {% set w, h, pad = 760, 220, 30 %}
+  {% set months = history.months %}
+  {% set mx = [1] + history.series|map(attribute='counts')|map('max')|list %}
+  {% set ymax = mx|max %}
+  {% set colors = ['#2563eb','#db2777','#f59e0b','#10b981','#7c3aed','#0ea5e9'] %}
+  <div style="overflow-x:auto">
+  <svg class="chart" viewBox="0 0 {{ w + 24 }} {{ h + 30 }}" style="width:100%;min-width:520px" role="img" aria-label="Posts per month for top topics">
+    {% for i in range(ymax + 1) if ymax <= 6 or i % ((ymax // 5) or 1) == 0 %}
+      {% set y = h - (h - pad) * i / ymax %}<line x1="{{ pad }}" x2="{{ w - 10 }}" y1="{{ y }}" y2="{{ y }}" stroke="currentColor" opacity=".08"/><text x="4" y="{{ y + 4 }}">{{ i }}</text>
+    {% endfor %}
+    {% for m in months %}<text x="{{ pad + (w - pad - 10) * loop.index0 / ((months|length - 1) or 1) }}" y="{{ h + 16 }}" text-anchor="middle">{{ m[2:] }}</text>{% endfor %}
+    {% for s in history.series %}{% set c = colors[loop.index0 % 6] %}
+      <polyline fill="none" stroke="{{ c }}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" points="{% for v in s.counts %}{{ pad + (w - pad - 10) * loop.index0 / ((months|length - 1) or 1) }},{{ h - (h - pad) * v / ymax }} {% endfor %}"/>
+    {% endfor %}
+  </svg></div>
+  <div class="chips" style="margin-top:8px">{% for s in history.series %}<span class="chip"><span class="swatch" style="background:{{ colors[loop.index0 % 6] }}"></span>{{ s.topic }}</span>{% endfor %}</div>
+</section>
+{% endif %}
+<div class="grid g2">
+  <section class="card">
+    <h2>Gap analysis: what our profile is missing</h2>
+    {% if gaps.has_own %}<p class="muted">Our profile has {{ gaps.own_posts }} analysed updates.</p>{% endif %}
+    <ul>{% for r in gaps.recommendations %}<li>{{ r }}</li>{% endfor %}</ul>
+    {% if gaps.missing %}<h3>Topics competitors use that we have not covered</h3>
+      <div class="chips">{% for m in gaps.missing %}<a class="chip" href="{{ url_for('ideas', pid=p.id, topic=m.topic) }}">{{ m.topic }} ({{ m.competitors_using }}/{{ m.competitors_total }})</a>{% endfor %}</div>{% endif %}
+    {% if gaps.covered %}<h3 style="margin-top:12px">Topics we already cover</h3><div class="chips">{% for c in gaps.covered %}<span class="chip">{{ c.topic }} · ours {{ c.own_posts }}</span>{% endfor %}</div>{% endif %}
+  </section>
+  <section class="card">
+    <h2>Keyword trends</h2>
+    <div class="table-wrap" style="max-height:640px;overflow-y:auto"><table><tr><th>Keyword</th><th class="num">Posts</th><th class="num">Competitors</th></tr>
+      {% for k in kws %}<tr><td><a href="{{ url_for('posts', pid=p.id, keyword=k.keyword) }}">{{ k.keyword }}</a></td><td class="num">{{ k.posts }}</td><td class="num">{{ k.competitors }}</td></tr>{% endfor %}</table></div>
+  </section>
+</div>
+<section class="card">
+  <h2>Publishing frequency by competitor</h2>
+  <div class="table-wrap"><table><tr><th>Competitor</th><th class="num">Posts</th><th class="num">Per month</th><th class="hide-sm">Active since</th><th>Last post</th><th class="num">Posts with offers</th></tr>
+    {% for c in patterns %}<tr><td>{{ c.name }}</td><td class="num">{{ c.posts }}</td><td class="num">{{ c.per_month }}</td><td class="hide-sm nowrap">{{ c.first }}</td><td class="nowrap">{{ c.last }}</td><td class="num">{{ c.offer_share }}%</td></tr>{% endfor %}</table></div>
+</section>
+{% endblock %}

@@ -1,0 +1,22 @@
+# Render.com blueprint: New > Blueprint, point it at the repo, then add AI keys in the dashboard.
+services:
+  - type: web
+    name: maps-competitor-intelligence
+    runtime: docker
+    plan: starter            # a persistent disk needs a paid plan; on free, the demo data is re-seeded on each start
+    healthCheckPath: /health
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: XAI_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false

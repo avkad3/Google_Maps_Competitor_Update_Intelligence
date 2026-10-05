@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "_macros.html" import post_card, icon %}
+{% block body %}
+<div class="head"><div><div class="row" style="gap:6px"><span class="badge info">{{ idea.topic }}</span><span class="badge">{{ 'Complete Google Maps update' if idea.kind == 'update' else 'Content idea' }}</span></div>
+  <h1 style="margin-top:10px">{{ idea.title }}</h1><p class="muted">{{ p.name }} · generated {{ idea.created_at|dt }} by {{ idea.provider }}</p></div>
+  <a class="btn" href="{{ url_for('ideas', pid=p.id) }}">{{ icon('arrow-left') }} All content</a></div>
+<div class="grid g2">
+<section class="card">
+  {% if idea.image_path %}<img src="{{ media_url(idea.image_path) }}" alt="Generated image for “{{ idea.title }}”" style="width:100%;border-radius:8px;margin-bottom:12px">{% endif %}
+  {% if idea.kind == 'update' %}
+    <h2>Update copy <small class="muted">({{ idea.body|length }} / 1500 characters)</small></h2>
+    <div class="copy" id="copy">{{ idea.body }}</div>
+    <div class="row" style="margin-top:10px"><button type="button" class="sm" id="copy-btn">{{ icon('copy') }} <span>Copy text</span></button><span class="muted" role="status" id="copy-status"></span></div>
+    {% if idea.angle %}<p class="muted">Angle: {{ idea.angle }}</p>{% endif %}
+  {% else %}
+    <h2>Idea</h2><p>{{ idea.body }}</p>
+    <form method="post" action="{{ url_for('expand_idea', idea_id=idea.id) }}"><button class="primary" data-busy="Writing…">Write the complete update for this topic</button></form>
+  {% endif %}
+</section>
+<section class="card">
+  <table class="kv">
+    <tr><th>Topic</th><td>{{ idea.topic }}</td></tr>
+    <tr><th>Keywords</th><td><div class="chips">{% for k in idea.keywords_list %}<span class="chip">{{ k }}</span>{% endfor %}</div></td></tr>
+    <tr><th>Call to action</th><td>{{ idea.cta }}</td></tr>
+    <tr><th>Image concept</th><td>{{ idea.image_concept }}</td></tr>
+    <tr><th>Project</th><td>{{ p.name }}{% if p.own %} · {{ p.own.name }}{% endif %}</td></tr>
+    <tr><th>Originality</th><td>{% if idea.similarity is not none %}{{ (idea.similarity * 100)|round|int }}% similar to the closest competitor post
+      {% if idea.similarity >= 0.55 %}<span class="badge warn">too close, rewrite before posting</span>{% else %}<span class="badge ok">original</span>{% endif %}{% endif %}</td></tr>
+  </table>
+</section>
+</div>
+{% if inspired %}<h2 style="margin-top:8px">Competitor posts that informed this</h2><div class="posts">{% for it in inspired %}{{ post_card(it) }}{% endfor %}</div>{% endif %}
+{% if similar and similar.id not in inspired|map(attribute='id')|list %}<h2 style="margin-top:16px">Closest competitor post</h2><div class="posts">{{ post_card(similar) }}</div>{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('copy-btn')?.addEventListener('click', async () => {
+  const status = document.getElementById('copy-status'), el = document.getElementById('copy');
+  try { await navigator.clipboard.writeText(el.innerText); status.textContent = 'Copied to clipboard'; }
+  catch { const r = document.createRange(); r.selectNodeContents(el); getSelection().removeAllRanges(); getSelection().addRange(r); status.textContent = 'Press Ctrl+C to copy'; }
+  setTimeout(() => status.textContent = '', 3000);
+});
+</script>
+{% endblock %}

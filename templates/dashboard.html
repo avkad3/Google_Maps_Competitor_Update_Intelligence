@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge, post_card, bars, bar_row, icon %}
+{% block body %}
+<div class="head">
+  <div><h1>{{ p.name }}</h1>
+    <p class="muted">Our profile: <b>{{ p.own.name if p.own else 'not set' }}</b>{% if p.location %} · {{ p.location }}{% endif %}{% if p.industry %} · {{ p.industry }}{% endif %}</p></div>
+  <div class="row">
+    <form method="post" action="{{ url_for('start_scrape', pid=p.id) }}">
+      <input type="hidden" name="all" value="1"><input type="hidden" name="mode" value="{{ 'live' if live_ok[0] else 'demo' }}">
+      <button class="primary" title="Re-scrape every competitor ({{ 'live' if live_ok[0] else 'demo' }} source)" data-busy="Starting…">{{ icon('refresh') }} Scrape all competitors</button>
+    </form>
+    <a class="btn" href="{{ url_for('ideas', pid=p.id) }}">{{ icon('sparkles') }} Generate content</a>
+  </div>
+</div>
+{% if s.last_run and s.last_run.status == 'needs_verification' %}
+<div class="banner" role="alert"><b>Scraping is paused:</b> Google asked for verification. <a href="{{ url_for('run_detail', rid=s.last_run.id) }}">Open the run to continue</a></div>
+{% endif %}
+<div class="stats">
+  <div class="stat"><b>{{ s.competitors }}</b><span>Competitors</span></div>
+  <div class="stat"><b>{{ s.total_posts }}</b><span>Posts collected</span></div>
+  <div class="stat"><b>{{ s.new_last }}</b><span>New in latest scrape</span></div>
+  <div class="stat"><b>{{ s.dupes_last }}</b><span>Duplicates skipped (latest)</span></div>
+  <div class="stat"><b>{{ s.failed }}</b><span>Failed scrape attempts</span></div>
+  <div class="stat"><b>{{ s.captcha }}</b><span>Manual verifications</span></div>
+  <div class="stat"><b>{{ s.generated }}</b><span>Ideas &amp; updates generated</span></div>
+  <div class="stat"><b class="sm">{% if s.last_run %}<a href="{{ url_for('run_detail', rid=s.last_run.id) }}">{{ s.last_run.started_at|dt }}</a>{% else %}-{% endif %}</b><span>Last scrape {% if s.last_run %}{{ status_badge(s.last_run.status) }}{% endif %}</span></div>
+</div>
+<div class="grid g2">
+  <section class="card">
+    <div class="section-head"><h2>Top topics</h2><a href="{{ url_for('trends_page', pid=p.id) }}">All trends</a></div>
+    {% if trends %}
+      {% for t in trends %}{{ bar_row(t.topic, t.competitors_using, t.competitor_pct, t.competitors_using ~ '/' ~ t.competitors_total) }}{% endfor %}
+      <p class="hint" style="margin-top:8px">Bars show how many competitors publish on each topic.</p>
+    {% else %}<p class="empty">Run an <a href="{{ url_for('analysis_page', pid=p.id) }}">AI analysis</a> to see topics.</p>{% endif %}
+  </section>
+  <section class="card">
+    <div class="section-head"><h2>Most used keywords</h2></div>
+    {{ bars(kws, 'keyword', 'posts') }}
+    {% if not kws %}<p class="empty">No keywords yet.</p>{% endif %}
+  </section>
+</div>
+{% if summary and summary.summary.insights %}
+<section class="card">
+  <div class="section-head"><h2>Latest AI insights</h2><small class="muted">{{ summary.summary.insights_provider }} · {{ summary.created_at|dt }}</small></div>
+  <ul>{% for i in summary.summary.insights %}<li>{{ i }}</li>{% endfor %}</ul>
+</section>
+{% endif %}
+<section class="card">
+  <div class="section-head"><h2>Competitors</h2><a href="{{ url_for('competitors', pid=p.id) }}">Manage</a></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Competitor</th><th class="num">Posts</th><th class="hide-sm">Latest post</th><th>Last scrape</th></tr></thead>
+    <tbody>
+    {% for c in comps %}
+    <tr><td><a href="{{ url_for('posts', pid=p.id, competitor=c.id) }}">{{ c.name }}</a><br><small class="muted">{{ c.address or '' }}</small></td>
+      <td class="num">{{ c.post_count }}</td><td class="hide-sm nowrap">{{ c.latest_post or '-' }}</td><td class="nowrap">{{ status_badge(c.last_status) }}<br><small class="muted">{{ c.last_scraped|dt }}</small></td></tr>
+    {% else %}
+    <tr><td colspan="4" class="empty">No competitors yet. <a href="{{ url_for('competitors', pid=p.id) }}">Add the first one</a>.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+<div class="section-head"><h2>Latest competitor updates</h2><a href="{{ url_for('posts', pid=p.id) }}">Browse repository</a></div>
+<div class="posts">{% for it in latest %}{{ post_card(it) }}{% else %}<div class="card empty">No posts collected yet. Start a scrape to fill the repository.</div>{% endfor %}</div>
+{% endblock %}

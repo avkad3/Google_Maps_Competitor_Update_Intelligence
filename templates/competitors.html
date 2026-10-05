@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge, icon %}
+{% block body %}
+<div class="head"><div><h1>Competitors &amp; scraping</h1><p class="muted">Competitors are added manually. Select some (or all) and start a scraping job.</p></div></div>
+<div class="split">
+<section class="card">
+    <div class="table-wrap"><table class="comp-table">
+      <thead><tr><th style="width:32px"><input type="checkbox" id="pick-all" aria-label="Select all competitors" {{ 'disabled' if not comps }}></th><th>Competitor</th><th class="num">Posts</th><th>Last scrape</th><th><span class="hide-sm">Actions</span></th></tr></thead>
+      <tbody>
+      {% for c in comps %}
+      <tr>
+        <td><input class="pick" type="checkbox" form="scrape-form" name="business_ids" value="{{ c.id }}" aria-label="Select {{ c.name }}"></td>
+        <td><b>{{ c.name }}</b>{% if c.project_count > 1 %} <span class="badge" title="Same record shared with other projects">in {{ c.project_count }} projects</span>{% endif %}<br>
+          <small class="muted">{{ c.category or '' }}{% if c.address %}{{ ' · ' if c.category }}{{ c.address }}{% endif %}{% if c.rating %} · ★ {{ c.rating }}{% if c.review_count %} ({{ c.review_count }}){% endif %}{% endif %}</small>
+          {% if c.maps_url %}<br><a href="{{ c.maps_url }}" target="_blank" rel="noopener" class="row" style="display:inline-flex;gap:4px"><small>Google Maps</small>{{ icon('external') }}</a>{% endif %}
+        </td>
+        <td class="num"><a href="{{ url_for('posts', pid=p.id, competitor=c.id) }}" aria-label="{{ c.post_count }} posts from {{ c.name }}">{{ c.post_count }}</a></td>
+        <td class="nowrap">{{ status_badge(c.last_status) }}<br><small class="muted">{{ c.last_scraped|dt }}</small>{% if c.last_error and c.last_status != 'done' %}<br><small class="muted" title="{{ c.last_error }}">{{ c.last_error[:60] }}</small>{% endif %}</td>
+        <td><details class="popover-host"><summary class="btn sm" aria-label="Edit {{ c.name }}">Edit</summary>
+          <div class="popover"><div class="card">
+            <form class="stack" method="post" action="{{ url_for('edit_competitor', pid=p.id, bid=c.id) }}">
+              <label>Name <input name="name" value="{{ c.name }}" required></label>
+              <label>Google Maps URL <input name="maps_url" type="url" value="{{ c.maps_url or '' }}"></label>
+              <label>Address <input name="address" value="{{ c.address or '' }}"></label>
+              <label>Category <input name="category" value="{{ c.category or '' }}"></label>
+              <div class="row"><button class="primary sm">Save</button><button type="button" class="sm" onclick="this.closest('details').open=false">Cancel</button></div>
+            </form>
+            <hr style="margin:12px 0">
+            <form method="post" action="{{ url_for('remove_competitor', pid=p.id, bid=c.id) }}" onsubmit="return confirm(this.dataset.msg)" data-msg="Remove {{ c.name }} from this project?">
+              <button class="danger sm">Remove from project</button>
+            </form>
+          </div></div></details></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="empty">No competitors yet. Add one using the form.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  <form method="post" action="{{ url_for('start_scrape', pid=p.id) }}" id="scrape-form">
+    <div class="card inset" style="margin:14px 0 0">
+      <h3>Start a scraping job</h3>
+      <div class="grid g2" style="gap:12px">
+        <fieldset>
+          <legend>Source</legend>
+          <label class="inline"><input type="radio" name="mode" value="live" {{ 'checked' if live_ok[0] else 'disabled' }}> Live Google Maps (Selenium)</label>
+          {% if not live_ok[0] %}<p class="hint" style="margin:0 0 4px 26px">Unavailable on this server: {{ live_ok[1] }}</p>{% endif %}
+          <label class="inline"><input type="radio" name="mode" value="demo" {{ '' if live_ok[0] else 'checked' }}> Demo source (no Google, for evaluation)</label>
+        </fieldset>
+        <fieldset>
+          <legend>Options</legend>
+          {% if p.own %}<label class="inline"><input type="checkbox" name="include_own" value="1"> Also scrape our own profile</label>{% endif %}
+          <label class="inline"><input type="checkbox" name="simulate_captcha" value="1"> Simulate a CAPTCHA (demo source)</label>
+        </fieldset>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="primary" id="scrape-selected" data-busy="Starting…" {{ 'disabled' if not comps }}>Scrape selected<span id="pick-count"></span></button>
+        <button name="all" value="1" data-busy="Starting…" {{ 'disabled' if not comps }}>Scrape all competitors</button>
+      </div>
+      <p class="hint" id="pick-hint" style="margin:8px 0 0">Tick competitors in the table to scrape only those.</p>
+    </div>
+  </form>
+</section>
+<section class="card">
+  <h2>Add a competitor</h2>
+  <form class="stack" method="post">
+    <label>Business name <input name="name" required placeholder="e.g. Glamour Studio Unisex Salon" autocomplete="off"></label>
+    <label><span>Google Maps URL <span class="hint">(optional)</span></span><input name="maps_url" type="url" placeholder="https://www.google.com/maps/place/..."></label>
+    <label>Address / area <input name="address" placeholder="e.g. Sector 20, Kharghar"></label>
+    <label>Category <input name="category" placeholder="e.g. Hair salon"></label>
+    <button class="primary">Add competitor</button>
+    <p class="hint" style="margin:0">Without a URL the scraper searches Google Maps for “name + address”. A competitor already in the repository (even from another project) is linked, not duplicated.</p>
+  </form>
+  <hr>
+  <p class="muted" style="margin:0">Want suggestions? <a href="{{ url_for('discover', pid=p.id) }}">Discover competitors from your keywords</a></p>
+</section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const all = document.getElementById('pick-all'), picks = [...document.querySelectorAll('.pick')];
+const btn = document.getElementById('scrape-selected'), count = document.getElementById('pick-count');
+function sync() {
+  const n = picks.filter(c => c.checked).length;
+  if (all) { all.checked = n && n === picks.length; all.indeterminate = n > 0 && n < picks.length; }
+  if (btn) { btn.disabled = n === 0; count.textContent = n ? ` (${n})` : ''; }
+}
+all?.addEventListener('change', () => { picks.forEach(c => c.checked = all.checked); sync(); });
+picks.forEach(c => c.addEventListener('change', sync));
+sync();
+// Only one edit popover open at a time; close on Escape or outside click.
+document.querySelectorAll('details.popover-host').forEach(d => d.addEventListener('toggle', () => {
+  if (d.open) { document.querySelectorAll('details.popover-host[open]').forEach(o => o !== d && (o.open = false)); d.querySelector('input')?.focus(); }
+}));
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('details.popover-host[open]').forEach(o => { o.open = false; o.querySelector('summary').focus(); }); });
+document.addEventListener('click', e => { if (!e.target.closest('details.popover-host')) document.querySelectorAll('details.popover-host[open]').forEach(o => o.open = false); });
+</script>
+{% endblock %}

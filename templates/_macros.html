@@ -1,0 +1,57 @@
+{% macro icon(name) -%}
+  {%- set paths = {
+    'refresh': '<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>',
+    'sparkles': '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
+    'external': '<path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+    'arrow-right': '<path d="M5 12h14"/><path d="M13 6l6 6-6 6"/>',
+    'arrow-left': '<path d="M19 12H5"/><path d="M11 18l-6-6 6-6"/>',
+    'star': '<path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/>',
+    'copy': '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
+    'check': '<path d="M20 6L9 17l-5-5"/>',
+  } -%}
+  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">{{ paths[name]|safe }}</svg>
+{%- endmacro %}
+
+{% macro status_badge(s) -%}
+  {%- set cls = {'done': 'ok', 'failed': 'bad', 'needs_verification': 'warn', 'running': 'info', 'queued': 'info', 'pending': '', 'skipped': 'warn', 'cancelled': 'warn'}.get(s, '') -%}
+  <span class="badge {{ cls }}">{{ {'needs_verification': 'needs verification'}.get(s, s) or 'never scraped' }}</span>
+{%- endmacro %}
+
+{% macro post_card(it, show_project=False) %}
+<article class="post">
+  {% if it.media %}
+  <div class="media" {% if it.media|length > 1 %}tabindex="0" aria-label="{{ it.media|length }} images, scroll sideways"{% endif %}>{% for m in it.media %}<img loading="lazy" decoding="async" src="{{ m.url }}" alt="Image {{ loop.index }} of {{ loop.length }} published by {{ it.business_name }}">{% endfor %}</div>
+  {% endif %}
+  <div class="body">
+    <div class="who"><b title="{{ it.business_name }}">{{ it.business_name }}</b><span class="muted" title="{{ it.published_at }}">{{ it.published_raw or it.published_at or 'date n/a' }}</span></div>
+    <div class="text clamp">{{ it.text }}</div>
+    <div class="chips">
+      {% if it.main_topic %}<span class="badge info">{{ it.main_topic }}</span>{% endif %}
+      {% if it.content_type %}<span class="badge">{{ it.content_type }}</span>{% endif %}
+      {% if it.offer %}<span class="badge warn" title="Offer detected: {{ it.offer }}">{{ it.offer[:40] }}</span>{% endif %}
+      {% if it.media|length > 1 %}<span class="badge" title="Swipe the image to see the others">{{ it.media|length }} images</span>{% endif %}
+    </div>
+    {% if it.keywords_list %}<div class="chips">{% for k in it.keywords_list[:4] %}<span class="chip">{{ k }}</span>{% endfor %}</div>{% endif %}
+  </div>
+  <div class="foot">
+    <span>{% if it.cta_label %}<span>CTA: <b>{{ it.cta_label }}</b></span>{% elif it.cta_detected %}<span>CTA: {{ it.cta_detected }}</span>{% endif %}
+      {% if it.times_seen > 1 %}<span class="badge" title="Seen again on later scrapes and skipped as a duplicate">seen {{ it.times_seen }}×</span>{% endif %}
+      {% if show_project and it.projects %}<span class="muted">{{ it.projects|join(', ') }}</span>{% endif %}</span>
+    <a class="row" style="gap:4px" href="{{ url_for('post_detail', post_id=it.id) }}" aria-label="Details for this {{ it.business_name }} post">Details {{ icon('arrow-right') }}</a>
+  </div>
+</article>
+{% endmacro %}
+
+{% macro bar_row(label, value, pct, shown=None) %}
+  <div class="bar-row"><span title="{{ label }}">{{ label }}</span><div class="meter" role="presentation"><i style="width: {{ [[pct, 0]|max, 100]|min|round(1) }}%"></i></div><span class="num">{{ value if shown is none else shown }}</span></div>
+{% endmacro %}
+
+{% macro bars(rows, label_key, value_key, max_value=None, suffix='') %}
+  {% set mx = max_value or ((rows|map(attribute=value_key)|max) if rows else 1) %}
+  {% for r in rows %}{{ bar_row(r[label_key], r[value_key], 100 * r[value_key] / (mx or 1), r[value_key] ~ suffix) }}{% endfor %}
+{% endmacro %}
+
+{% macro pair_bars(pairs) %}
+  {% set mx = (pairs|map(attribute=1)|max) if pairs else 1 %}
+  {% for t, n in pairs %}{{ bar_row(t, n, 100 * n / (mx or 1)) }}{% else %}<p class="muted">Nothing yet.</p>{% endfor %}
+{% endmacro %}

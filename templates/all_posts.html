@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% from "_macros.html" import post_card %}
+{% block body %}
+<div class="head"><div><h1>All collected posts</h1><p class="muted">{{ total }} posts across every project{% if total > 60 %} (showing the latest 60; narrow the filters to see others){% endif %}.</p></div></div>
+<form class="card filters" method="get">
+  <label>Project <select name="project"><option value="">All projects</option>{% for x in all_projects %}<option value="{{ x.id }}" {{ 'selected' if args.project == x.id|string }}>{{ x.name }}</option>{% endfor %}</select></label>
+  <label>Search <input type="search" name="q" value="{{ args.q or '' }}"></label>
+  <label>Topic <input name="topic" value="{{ args.topic or '' }}"></label>
+  <label>From <input type="date" name="from" value="{{ args.get('from', '') }}"></label>
+  <label>To <input type="date" name="to" value="{{ args.to or '' }}"></label>
+  <div class="row"><button class="primary">Apply filters</button><a class="btn" href="{{ url_for('all_posts') }}">Reset</a></div>
+</form>
+<div class="posts">{% for it in items %}{{ post_card(it, show_project=True) }}{% else %}<div class="card empty">No posts.</div>{% endfor %}</div>
+{% endblock %}

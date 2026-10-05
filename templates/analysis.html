@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pair_bars %}
+{% block body %}
+<div class="head"><div><h1>AI content analysis</h1>
+  <p class="muted">Classifies every post (topic, sub-topic, keywords, content type, CTA, offer) and summarises patterns across the repository.</p></div></div>
+<section class="card">
+  <form method="post" class="inline-form">
+    <label style="min-width:240px">Provider
+      <select name="provider">
+        <option value="">Automatic (first available, with failover)</option>
+        {% for pr in providers %}<option value="{{ pr.name }}" {{ '' if pr.configured else 'disabled' }}>{{ pr.label }}{{ '' if pr.configured else ' (no key)' }}</option>{% endfor %}
+      </select></label>
+    <label class="inline" style="min-height:40px"><input type="checkbox" name="reanalyse" value="1"> Re-analyse posts that were already analysed</label>
+    <button class="primary" data-busy="Analysing…">Run analysis</button>
+    <span class="muted" style="align-self:center">{{ unanalysed }} posts not analysed yet.</span>
+  </form>
+</section>
+{% if summary %}{% set s = summary.summary %}
+<p class="muted">Latest analysis: {{ summary.created_at|dt }} · {{ summary.provider }} · {{ s.analysed }} of {{ s.posts }} competitor posts classified.</p>
+<section class="card">
+  <div class="section-head"><h2>Key insights</h2><small class="muted">{{ s.insights_provider }}</small></div>
+  <ul>{% for i in s.insights %}<li>{{ i }}</li>{% endfor %}</ul>
+</section>
+<div class="grid g3">
+  <section class="card"><h2>Main topics</h2>{{ pair_bars(s.topics) }}</section>
+  <section class="card"><h2>Sub-topics</h2>{{ pair_bars(s.sub_topics) }}</section>
+  <section class="card"><h2>Content types</h2>{{ pair_bars(s.content_types) }}</section>
+  <section class="card"><h2>Calls to action</h2>{{ pair_bars(s.ctas) }}</section>
+  <section class="card"><h2>Offer / promotion patterns</h2>
+    {% for t, n in s.offer_patterns %}<div class="row between" style="padding:4px 0"><span>{{ t }}</span><span class="badge">{{ n }}</span></div>{% else %}<p class="muted">No offers detected.</p>{% endfor %}
+    <small class="muted">Numbers are normalised to N so "20% off" and "30% off" group together.</small></section>
+  <section class="card"><h2>Frequent subjects (keywords)</h2><div class="chips">{% for k, n in s.keywords %}<span class="chip">{{ k }} · {{ n }}</span>{% endfor %}</div></section>
+</div>
+<section class="card">
+  <h2>Content frequency</h2>
+  {% set mx = (s.posts_per_month|map(attribute=1)|max) if s.posts_per_month else 1 %}
+  <div class="columns" role="img" aria-label="Competitor posts per month">
+    {% for m, n in s.posts_per_month %}<div title="{{ m }}: {{ n }} posts"><small class="muted">{{ n }}</small>
+      <div class="col" style="height:{{ (100 * n / (mx or 1))|round }}px"></div><small class="muted">{{ m[2:] }}</small></div>{% endfor %}
+  </div>
+  <small class="muted">Competitor posts published per month.</small>
+</section>
+<section class="card">
+  <h2>Competitor publishing patterns</h2>
+  <div class="table-wrap"><table>
+    <tr><th>Competitor</th><th class="num">Posts</th><th class="num">Per month</th><th class="num hide-sm">Avg gap (days)</th><th class="hide-sm">Last post</th><th>Top topics</th><th class="hide-sm">Main format</th><th class="num">With offer</th></tr>
+    {% for c in s.competitors %}<tr><td>{{ c.name }}</td><td class="num">{{ c.posts }}</td><td class="num">{{ c.per_month }}</td><td class="num hide-sm">{{ c.avg_gap_days or '-' }}</td><td class="hide-sm nowrap">{{ c.last }}</td>
+      <td><div class="chips">{% for t, n in c.top_topics %}<span class="chip">{{ t }} ({{ n }})</span>{% endfor %}</div></td><td class="hide-sm">{{ c.top_type }}</td><td class="num">{{ c.offer_share }}%</td></tr>{% endfor %}
+  </table></div>
+</section>
+{% else %}
+<div class="card empty">No analysis yet. Run one above.</div>
+{% endif %}
+{% if history %}<section class="card"><h2>Analysis history</h2><div class="table-wrap"><table><tr><th>When</th><th>Provider</th><th class="num">Posts analysed</th></tr>
+  {% for h in history %}<tr><td>{{ h.created_at|dt }}</td><td>{{ h.provider }}</td><td class="num">{{ h.posts_analyzed }}</td></tr>{% endfor %}</table></div></section>{% endif %}
+{% endblock %}

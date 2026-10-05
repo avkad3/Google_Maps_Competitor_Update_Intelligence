@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge %}
+{% block body %}
+<div class="head"><div><h1>Scraping history &amp; logs</h1><p class="muted">Every run and every competitor attempt is stored, including CAPTCHA / manual-intervention status and errors.</p></div></div>
+<section class="card">
+  <h2>Runs</h2>
+  <div class="table-wrap"><table>
+    <tr><th>#</th><th>Mode</th><th>Started</th><th class="hide-sm">Ended</th><th>Status</th><th class="num">Competitors</th><th class="num">Found</th><th class="num">New</th><th class="num">Dupes</th><th class="num">Images</th><th class="num">Failed</th><th class="num">CAPTCHA</th></tr>
+    {% for r in history %}
+    <tr><td><a href="{{ url_for('run_detail', rid=r.id) }}">{{ r.id }}</a></td><td>{{ r.mode }}{% if r.trigger != 'manual' %} <small class="muted">({{ r.trigger }})</small>{% endif %}</td>
+      <td class="nowrap">{{ r.started_at|dt }}</td><td class="hide-sm nowrap">{{ r.ended_at|dt }}</td><td>{{ status_badge(r.status) }}</td>
+      <td class="num">{{ r.competitors_done }}/{{ r.competitors_total }}</td><td class="num">{{ r.posts_found }}</td><td class="num">{{ r.new_posts }}</td>
+      <td class="num">{{ r.duplicates }}</td><td class="num">{{ r.images_downloaded }}</td><td class="num">{{ r.failures }}</td><td class="num">{{ r.captcha_events }}</td></tr>
+    {% else %}<tr><td colspan="12" class="empty">No scraping runs yet. <a href="{{ url_for('competitors', pid=p.id) }}">Start one</a>.</td></tr>{% endfor %}
+  </table></div>
+</section>
+<section class="card">
+  <h2>Competitor attempts</h2>
+  <div class="table-wrap"><table>
+    <tr><th>Run</th><th>Competitor</th><th>Status</th><th>Start</th><th class="hide-sm">End</th><th class="num">Found</th><th class="num">New</th><th class="num">Dupes</th><th class="num">Images</th><th>Manual intervention / error</th></tr>
+    {% for i in items %}
+    <tr><td><a href="{{ url_for('run_detail', rid=i.run_id) }}">{{ i.run_id }}</a></td><td>{{ i.business_name }}</td><td>{{ status_badge(i.status) }}</td><td class="nowrap">{{ i.started_at|dt }}</td><td class="hide-sm nowrap">{{ i.ended_at|dt }}</td>
+      <td class="num">{{ i.posts_found }}</td><td class="num">{{ i.new_posts }}</td><td class="num">{{ i.duplicates }}</td><td class="num">{{ i.images_downloaded }}</td>
+      <td class="notes">{% if i.captcha_required %}<span class="badge warn">CAPTCHA</span> {% endif %}<small>{{ i.manual_intervention or '' }} {{ i.error or '' }}</small>
+        {% if i.screenshot %}<a href="{{ i.screenshot|shot }}" target="_blank" rel="noopener"><small>screenshot</small></a>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="10" class="empty">No competitor attempts yet.</td></tr>
+    {% endfor %}
+  </table></div>
+</section>
+{% endblock %}

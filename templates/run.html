@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge %}
+{% block body %}
+<div class="head">
+  <div><h1>Scrape run #{{ run.id }}</h1>
+    <p class="muted">{{ run.mode }} mode · {{ run.trigger }} · started {{ run.started_at|dt }}</p></div>
+  <div class="row" id="run-status" aria-live="polite">{{ status_badge(run.status) }}</div>
+</div>
+<div id="verify" class="banner" role="alert" {% if run.status != 'needs_verification' %}hidden{% endif %}>
+  <h2 style="margin-top:0">Manual verification required</h2>
+  <p id="verify-msg">{{ run.message }}</p>
+  <p>Google showed a CAPTCHA or "unusual traffic" page, so the job is paused instead of failing silently.
+     {% if live_console %}Complete the check in the browser window on the scraping machine, or solve it here by clicking on the screenshot below, then press <b>Continue</b>.
+     {% else %}This is a simulated challenge from the demo source. Press <b>Continue</b> as if you had completed it.{% endif %}</p>
+  <div class="console" id="console" style="margin:10px 0">
+    <img id="shot" alt="Screenshot of the verification page" hidden>
+    {% if live_console %}
+    <div class="row" style="margin-top:8px">
+      <input id="console-text" aria-label="Text to type into the scraper browser" placeholder="Type text into the focused field" style="flex:1;min-width:180px">
+      <button type="button" onclick="consoleOp('type')">Type</button>
+      <button type="button" onclick="consoleOp('type', true)">Type + Enter</button>
+      <button type="button" onclick="consoleOp('screenshot')">Refresh screenshot</button>
+    </div>
+    <small>Clicks on the screenshot are sent to the scraper's browser.</small>
+    {% endif %}
+  </div>
+  <form method="post" action="{{ url_for('run_action', rid=run.id) }}" class="row">
+    <button class="primary" name="action" value="continue">I've completed verification, continue</button>
+    <button name="action" value="skip">Skip this competitor</button>
+    <button class="danger" name="action" value="cancel">Cancel run</button>
+  </form>
+</div>
+<section class="card">
+  <div class="row between"><b id="msg" aria-live="polite">{{ run.message or '' }}</b><span id="count" class="muted">{{ run.competitors_done }} of {{ run.competitors_total }} competitors</span></div>
+  {% set pct = (100 * run.competitors_done / run.competitors_total)|round|int if run.competitors_total else 0 %}
+  <div class="progress" style="margin:12px 0 14px" role="progressbar" aria-label="Scrape progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ pct }}" id="progress"><i id="bar" style="width: {{ pct }}%"></i></div>
+  <div class="stats" style="margin:0">
+    <div class="stat"><b id="s-found">{{ run.posts_found }}</b><span>Posts found</span></div>
+    <div class="stat"><b id="s-new">{{ run.new_posts }}</b><span>New posts added</span></div>
+    <div class="stat"><b id="s-dupes">{{ run.duplicates }}</b><span>Duplicates skipped</span></div>
+    <div class="stat"><b id="s-imgs">{{ run.images_downloaded }}</b><span>Images saved</span></div>
+    <div class="stat"><b id="s-fail">{{ run.failures }}</b><span>Failures</span></div>
+    <div class="stat"><b id="s-captcha">{{ run.captcha_events }}</b><span>Verification prompts</span></div>
+  </div>
+</section>
+<section class="card">
+  <h2>Per-competitor log</h2>
+  <div class="table-wrap"><table id="items">
+    <thead><tr><th>Competitor</th><th>Status</th><th class="hide-sm">Start</th><th class="hide-sm">End</th><th class="num">Found</th><th class="num">New</th><th class="num">Dupes</th><th class="num">Images</th><th>CAPTCHA / notes</th></tr></thead>
+    <tbody>
+    {% for i in items %}
+    <tr><td>{{ i.business_name }}</td><td>{{ status_badge(i.status) }}</td><td class="hide-sm nowrap">{{ i.started_at|dt }}</td><td class="hide-sm nowrap">{{ i.ended_at|dt }}</td>
+      <td class="num">{{ i.posts_found }}</td><td class="num">{{ i.new_posts }}</td><td class="num">{{ i.duplicates }}</td><td class="num">{{ i.images_downloaded }}</td>
+      <td class="notes">{% if i.captcha_required %}<span class="badge warn">verification</span> {% endif %}<small>{{ i.manual_intervention or '' }} {{ i.error or '' }}</small></td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+<section class="card" id="log-card" {% if not log_lines %}hidden{% endif %}><h2>Live log</h2><div class="log" id="log">{{ log_lines|join('\n') }}</div></section>
+<div class="row"><a class="btn" href="{{ url_for('posts', pid=p.id) }}">Browse repository</a><a class="btn" href="{{ url_for('ideas', pid=p.id) }}">Generated content</a><a class="btn" href="{{ url_for('runs', pid=p.id) }}">All scrape logs</a></div>
+{% endblock %}
+{% block scripts %}
+<script>
+const RID = {{ run.id }};
+const badge = s => {
+  const cls = {done:'ok', failed:'bad', needs_verification:'warn', running:'info', queued:'info', skipped:'warn', cancelled:'warn'}[s] || '';
+  return `<span class="badge ${cls}">${s === 'needs_verification' ? 'needs verification' : s}</span>`;
+};
+const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dt = s => s ? s.replace('T', ' ').slice(0, 16) : '-';
+let lastShot = '', lastStatus = {{ run.status|tojson }};
+async function poll() {
+  let data;
+  try { data = await (await fetch(`/api/runs/${RID}`)).json(); } catch (e) { return setTimeout(poll, 4000); }
+  const r = data.run;
+  if (r.status !== lastStatus) { document.getElementById('run-status').innerHTML = badge(r.status); lastStatus = r.status; }
+  document.getElementById('msg').textContent = r.message || '';
+  const pct = r.competitors_total ? Math.round(100 * r.competitors_done / r.competitors_total) : 0;
+  document.getElementById('bar').style.width = pct + '%';
+  document.getElementById('progress').setAttribute('aria-valuenow', pct);
+  document.getElementById('count').textContent = `${r.competitors_done} of ${r.competitors_total} competitors`;
+  for (const [id, k] of [['s-found','posts_found'],['s-new','new_posts'],['s-dupes','duplicates'],['s-imgs','images_downloaded'],['s-fail','failures'],['s-captcha','captcha_events']])
+    document.getElementById(id).textContent = r[k];
+  document.querySelector('#items tbody').innerHTML = data.items.map(i => `<tr><td>${esc(i.business_name)}</td><td>${badge(i.status)}</td>
+    <td class="hide-sm nowrap">${dt(i.started_at)}</td><td class="hide-sm nowrap">${dt(i.ended_at)}</td><td class="num">${i.posts_found}</td><td class="num">${i.new_posts}</td>
+    <td class="num">${i.duplicates}</td><td class="num">${i.images_downloaded}</td>
+    <td class="notes">${i.captcha_required ? '<span class="badge warn">verification</span> ' : ''}<small>${esc(i.manual_intervention)} ${esc(i.error)}</small></td></tr>`).join('');
+  const v = document.getElementById('verify');
+  v.hidden = r.status !== 'needs_verification';
+  if (!v.hidden) {
+    document.getElementById('verify-msg').textContent = r.message || '';
+    const waiting = data.items.find(i => i.status === 'needs_verification');
+    if (waiting && waiting.screenshot_url && waiting.screenshot_url !== lastShot) {
+      lastShot = waiting.screenshot_url;
+      const img = document.getElementById('shot'); img.src = lastShot + '?t=' + Date.now(); img.hidden = false;
+    }
+    if (!data.attached) document.getElementById('verify-msg').textContent += ' (The server restarted, so this run can no longer resume. Start a new scrape.)';
+  }
+  if (data.log && data.log.length) { document.getElementById('log-card').hidden = false; const l = document.getElementById('log'); l.textContent = data.log.join('\n'); l.scrollTop = l.scrollHeight; }
+  if (['running', 'queued', 'needs_verification'].includes(r.status)) setTimeout(poll, r.status === 'needs_verification' ? 3000 : 1500);
+}
+async function consoleOp(op, enter=false, x=0, y=0) {
+  const body = {op, enter, x, y, text: (document.getElementById('console-text') || {}).value || ''};
+  let res;
+  try { res = await (await fetch(`/runs/${RID}/console`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)})).json(); }
+  catch (e) { document.getElementById('verify-msg').textContent = 'Could not reach the server. Try again.'; return; }
+  if (res.screenshot_url) { const img = document.getElementById('shot'); lastShot = res.screenshot_url; img.src = res.screenshot_url + '?t=' + Date.now(); img.hidden = false; }
+  else if (!res.ok) document.getElementById('verify-msg').textContent = res.message || 'The scraper browser did not respond.';
+}
+{% if live_console %}
+document.getElementById('shot').addEventListener('click', e => {
+  const r = e.target.getBoundingClientRect();
+  consoleOp('click', false, (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+});
+{% endif %}
+poll();
+</script>
+{% endblock %}
