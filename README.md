@@ -6,6 +6,14 @@ and complete draft updates for your own profile.
 
 Built for the "Google Maps Competitor Update Intelligence Tool" assignment. Python (Flask + Selenium + SQLite), no login.
 
+![Project dashboard: competitor count, posts collected, top topics and keywords](docs/screenshots/dashboard.png)
+
+| Trend analysis | Content generator |
+|---|---|
+| ![Topic trends across competitors](docs/screenshots/trends.png) | ![Generating non-repeating post ideas and full updates](docs/screenshots/ideas.png) |
+
+*Screenshots use the bundled demo dataset (ABC Salon, Kharghar, with 8 competitors).*
+
 ## Quick start
 
 ```bash
